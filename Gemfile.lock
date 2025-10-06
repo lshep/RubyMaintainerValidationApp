@@ -1,0 +1,81 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    aws-eventstream (1.4.0)
+    aws-partitions (1.1164.0)
+    aws-sdk-core (3.233.0)
+      aws-eventstream (~> 1, >= 1.3.0)
+      aws-partitions (~> 1, >= 1.992.0)
+      aws-sigv4 (~> 1.9)
+      base64
+      bigdecimal
+      jmespath (~> 1, >= 1.6.1)
+      logger
+    aws-sdk-ses (1.90.0)
+      aws-sdk-core (~> 3, >= 3.231.0)
+      aws-sigv4 (~> 1.5)
+    aws-sigv4 (1.12.1)
+      aws-eventstream (~> 1, >= 1.0.2)
+    base64 (0.3.0)
+    bcrypt (3.1.20)
+    bigdecimal (3.2.3)
+    jmespath (1.6.2)
+    logger (1.7.0)
+    mustermann (3.0.4)
+      ruby2_keywords (~> 0.0.1)
+    nio4r (2.7.4)
+    puma (7.0.4)
+      nio4r (~> 2.0)
+    rack (3.2.1)
+    rack-protection (4.1.1)
+      base64 (>= 0.1.0)
+      logger (>= 1.6.0)
+      rack (>= 3.0.0, < 4)
+    rack-session (2.1.1)
+      base64 (>= 0.1.0)
+      rack (>= 3.0.0)
+    rackup (2.2.1)
+      rack (>= 3)
+    ruby2_keywords (0.0.5)
+    sinatra (4.1.1)
+      logger (>= 1.6.0)
+      mustermann (~> 3.0)
+      rack (>= 3.0.0, < 4)
+      rack-protection (= 4.1.1)
+      rack-session (>= 2.0.0, < 3)
+      tilt (~> 2.0)
+    sqlite3 (2.7.4-aarch64-linux-gnu)
+    sqlite3 (2.7.4-aarch64-linux-musl)
+    sqlite3 (2.7.4-arm-linux-gnu)
+    sqlite3 (2.7.4-arm-linux-musl)
+    sqlite3 (2.7.4-arm64-darwin)
+    sqlite3 (2.7.4-x86-linux-gnu)
+    sqlite3 (2.7.4-x86-linux-musl)
+    sqlite3 (2.7.4-x86_64-darwin)
+    sqlite3 (2.7.4-x86_64-linux-gnu)
+    sqlite3 (2.7.4-x86_64-linux-musl)
+    tilt (2.6.1)
+
+PLATFORMS
+  aarch64-linux-gnu
+  aarch64-linux-musl
+  arm-linux-gnu
+  arm-linux-musl
+  arm64-darwin
+  x86-linux-gnu
+  x86-linux-musl
+  x86_64-darwin
+  x86_64-linux-gnu
+  x86_64-linux-musl
+
+DEPENDENCIES
+  aws-sdk-ses
+  bcrypt
+  puma
+  rack
+  rackup
+  sinatra
+  sqlite3
+
+BUNDLED WITH
+   2.7.2
