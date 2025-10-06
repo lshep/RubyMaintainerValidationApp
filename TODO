@@ -1,9 +1,0 @@
-Build out GET endpoint to query database
-      ?? update list invalid emails to also give email_status (theoretically if
-      can get bounce/failure/etc status from ses)
-
-Update core.db to integrate with ses to retrieve bounced/failed emails and
-update email_status 
-
-?? Update sending verification where if hash/password already in database use
-the exisiting so any email sent is clickable.
