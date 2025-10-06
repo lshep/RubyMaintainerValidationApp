@@ -1,0 +1,5 @@
+db.sqlite3
+.auth.yml
+.mock_maintainers.json
+.mock_verification.json
+.ruby-version
