@@ -1,0 +1,14 @@
+sudo apt update
+sudo apt install -y build-essential libssl-dev libreadline-dev zlib1g-dev libyaml-dev libsqlite3-dev
+
+rbenv install 3.2.2
+
+## in project directory
+
+rbenv local 3.2.2
+rbenv rehash
+
+ruby -v
+
+gem install bundler
+bundle install 
