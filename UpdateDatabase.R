@@ -17,7 +17,8 @@ library(jsonlite)
 library(httr2)
 
 ## change for live location
-url_base = "http://127.0.0.1:4567"
+#url_base = "http://127.0.0.1:4567"
+url_base = "https://pkgmaintainers.bioconductor.org"
 
 debug=FALSE
 
@@ -193,7 +194,7 @@ if (nrow(deleted_pairs) > 0) {
 ## ------------------------------------------------------------------------------## 
 
 if(sendEmail){
-
+     message("attempting to send verification email")
     query <- "
 SELECT id, name, email
 FROM maintainers
@@ -225,6 +226,8 @@ WHERE consent_date IS NULL
         message("No stale consent entries found.")
     }
     
+}else{
+	message("Not attempting to send verification emails")
 }
     
 ## write sample json for ruby debugging
