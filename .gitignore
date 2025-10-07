@@ -2,3 +2,5 @@ db.sqlite3
 auth.yml
 *json
 .ruby-version
+puma*
+shared*
