@@ -369,7 +369,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   def Core.process_sns_notification(payload)
     begin
       sns_message = JSON.parse(payload)
-    rescue JSON::ParserError
+    rescue JSON::ParserError => e
       return [400, "Invalid JSON"]
     end
     
@@ -386,15 +386,17 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       return [200, "Subscription confirmed"]
       
     when 'Notification'
-      notification = JSON.parse(sns_message['Message'])
-      
-      case notification['notificationType']
+      begin
+        notification = JSON.parse(sns_message['Message'])
+      rescue JSON::ParserError => e
+        return [400, "Invalid nested JSON"]
+      end
+
+      case notification['eventType']
       when 'Bounce'
         Core.handle_bounce(notification)
       when 'Complaint'
         Core.handle_complaint(notification)
-      else
-      puts "Unhandled notificationType: #{notification['notificationType']}"
       end
       return [200, "Processed"]
 
