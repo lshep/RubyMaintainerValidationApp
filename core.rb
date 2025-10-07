@@ -1,4 +1,3 @@
-require 'yaml'
 require 'json'
 require 'sqlite3'
 require 'bcrypt'
@@ -18,7 +17,6 @@ end
 class CoreConfig
   @@request_uri  = nil
   @@db = nil
-  @@auth_config = nil
   def self.set_request_uri(request_uri)
     @@request_uri = request_uri
   end
@@ -31,17 +29,9 @@ class CoreConfig
   def self.db
     @@db
   end
-  def self.set_auth_config(auth_config)
-    @@auth_config = auth_config
-  end
-  def self.auth_config
-    @@auth_config
-  end
 end
 
 module Core
-
-  CoreConfig.set_auth_config(YAML::load_file(File.join(File.dirname(__FILE__), "auth.yml" )))
 
   dbfile = File.join(File.dirname(__FILE__), "db.sqlite3" )
   CoreConfig.set_db(SQLite3::Database.new dbfile)
@@ -122,7 +112,7 @@ module Core
     msg = <<-END.unindent
       Hi #{name},
       
-      This email is assoicated with at least one Bioconductor package.
+      This email is associated with at least one Bioconductor package.
       Bioconductor periodically will confirm valid maintainer emails and
       remind maintainers of Bioconductor policies and expectations. Failure to
       accept bioconductor policies by clicking the link below may result in
@@ -149,16 +139,30 @@ module Core
       msg)
   end
 
+  def Core.get_ses_client
+    region = ENV['AWS_REGION'] || 'us-east-1'
+
+    if ENV['AWS_ACCESS_KEY_ID'] && ENV['AWS_SECRET_ACCESS_KEY']
+      creds = Aws::Credentials.new(
+        ENV['AWS_ACCESS_KEY_ID'],
+        ENV['AWS_SECRET_ACCESS_KEY']
+      )
+
+      Aws::SES::Client.new(
+        region: region,
+        credentials: creds
+      )
+    else
+      Aws::SES::Client.new(region: region)
+    end
+  end
   
   def Core.send_email(from, to, subject, message)
 
     if ENV['SEND_VERIFICATION_EMAILS'] == 'true'
-      aws = CoreConfig.auth_config['aws']
-      ses = Aws::SES::Client.new(
-        region: aws['region'],
-        access_key_id: aws['aws_access_key_id'],
-        secret_access_key: aws['aws_secret_access_key']
-      )
+
+      ses = Core.get_ses_client
+      
       ses.send_email({
                        source: from, 
                        destination: { to_addresses: [to] },
