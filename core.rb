@@ -229,7 +229,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       begin
         if BCrypt::Password.new(pw_hash) == password
           CoreConfig.db.execute(
-            "UPDATE maintainers SET consent_date = ?, pw_hash = NULL WHERE id = ?",
+            "UPDATE maintainers SET consent_date = ?, pw_hash = NULL, email_status = 'valid', is_email_valid = 1 WHERE id = ?",
             [consent_date, entry['id']]
           )
           matched = true
