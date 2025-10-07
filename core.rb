@@ -33,24 +33,28 @@ end
 
 module Core
 
-  dbfile = File.join(File.dirname(__FILE__), "db.sqlite3" )
-  CoreConfig.set_db(SQLite3::Database.new dbfile)
-  if (!File.exist?(dbfile)) or (File.size(dbfile) == 0)
-    rows = CoreConfig.db.execute <<-SQL.unindent
-      create table maintainers (
-        id integer primary key autoincrement,
-        package varchar(50) not null,
-        name varchar(255) not null,
-        email varchar(255) not null,
-        consent_date date,
-        pw_hash varchar(255),
-        email_status varchar(50),
-        is_email_valid boolean,
-        bounce_type varchar(50),
-        bounce_subtype varchar(50),
-        smtp_status varchar(10),
+dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
+
+  need_schema = !File.exist?(dbfile) || File.size(dbfile) == 0
+  db = SQLite3::Database.new(dbfile)
+  CoreConfig.set_db(db)
+
+  if need_schema
+    db.execute <<-SQL.unindent
+      CREATE TABLE maintainers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        package VARCHAR(50) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        consent_date DATE,
+        pw_hash VARCHAR(255),
+        email_status VARCHAR(50),
+        is_email_valid BOOLEAN,
+        bounce_type VARCHAR(50),
+        bounce_subtype VARCHAR(50),
+        smtp_status VARCHAR(10),
         diagnostic_code TEXT,
-        unique(package, email)
+        UNIQUE(package, email)
       );
     SQL
   end
