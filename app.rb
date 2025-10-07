@@ -1,6 +1,12 @@
 require 'sinatra'
 require_relative './core'
 
+configure :production do
+  enable :protection
+  set :protection, except: :http_origin
+  set :protection, proxy: true
+end
+
 post '/send-verification' do
   begin
     payload = request.body.read
