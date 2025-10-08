@@ -2,8 +2,13 @@ Build out GET endpoint to query database
       ?? update list invalid emails to also give email_status (theoretically if
       can get bounce/failure/etc status from ses)
 
-Update core.db to integrate with ses to retrieve bounced/failed emails and
-update email_status 
+Database update -- keep track of when verification email is sent to not overspam --
+maybe re-send every two weeks
 
-?? Update sending verification where if hash/password already in database use
+Update sending verification where if hash/password already in database use
 the exisiting so any email sent is clickable.
+
+## Quick reference
+## pkgmaintainers.bioconductor.org / 44.218.162.37
+
+See also DashboardInterface for shiny App
