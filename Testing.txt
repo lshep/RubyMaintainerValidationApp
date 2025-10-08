@@ -219,3 +219,38 @@ resp_status(response)
 resp_body_string(response)
 
 
+###############################################
+## ------------------------------------------------------------------------------##
+##
+##  Testing bounce and complaint
+##    NOTE:  This has to be done on live instance as aws requires public IP
+##
+## ------------------------------------------------------------------------------##
+
+## In sqlite3 database plant test emails
+INSERT INTO maintainers (package, name, email, consent_date, email_status,
+is_email_valid) VALUES ('TestPkg2', 'Simulated User 2',
+'bounce@simulator.amazonses.com', DATE('now'), 'sent', 1);
+
+INSERT INTO maintainers (package, name, email, consent_date, email_status,
+is_email_valid) VALUES ('TestPkg3', 'Simulated User 3',
+'complaint@simulator.amazonses.com', DATE('now'), 'sent', 1);
+
+## In bash
+export SEND_VERIFICATION_EMAILS=true
+
+## In irb ruby
+require_relative './core'
+Core.send_email(
+   "bioc-validation-noreply@bioconductor.org",
+   "bounce@simulator.amazonses.com",
+   "Bounce Test",
+   "Test for bounce handling"
+)
+
+Core.send_email(
+   "bioc-validation-noreply@bioconductor.org",
+   "complaint@simulator.amazonses.com",
+   "Complaint Test",
+   "Testing complaint handling in BioconductorMaintainerValidation"
+)
