@@ -1,0 +1,182 @@
+# On AWS
+Launce EC2 Instance on AWS
+  - Have http/https/ssh ports open (existing security groups)
+Create and assign an Elastic IP
+Add route53 CNAME entry if want a domain specific endpoint
+
+
+# SSH into Instance
+ssh ubuntu@44.218.162.37
+
+
+# Install System Dependencies
+sudo apt update && sudo apt upgrade -y
+
+sudo apt install -y \
+  git curl build-essential libssl-dev libreadline-dev zlib1g-dev \
+  libsqlite3-dev sqlite3 libpq-dev \
+  libffi-dev libyaml-dev \
+  libgdbm-dev libncurses5-dev \
+  nginx certbot python3-certbot-nginx libcurl4-openssl-dev
+
+
+# Install rbenv and ruby-build
+## rbenv
+git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(rbenv init - bash)"' >> ~/.bashrc
+source ~/.bashrc
+
+## ruby-build plugin
+git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+
+
+# Install Ruby
+## Current ruby at creation 3.2.2
+rbenv install 3.2.2
+rbenv global 3.2.2
+
+## Check Ruby version
+ruby -v
+
+
+# Install Bundler
+gem install bundler
+rbenv rehash
+
+# Clone Sinatra App and Initialize local rbenv
+cd /opt
+sudo mkdir RubyMaintainerValidationApp
+sudo chown ubuntu:ubuntu RubyMaintainerValidationApp
+cd RubyMaintainerValidationApp
+
+## Clone the repo
+git clone git@github.com:lshep/RubyMaintainerValidationApp.git .
+
+## Set local Ruby version
+rbenv local 3.2.2
+
+# Install Ruby Gem Dependencies
+bundle install
+
+# Configure Puma
+mkdir -p shared
+
+cat > puma.rb <<'EOF'
+#workers 2
+threads 1, 5
+
+app_dir = File.expand_path("../", __FILE__)
+shared_dir = "#{app_dir}/shared"
+
+bind "unix:///tmp/ruby_maintainer_validation.sock"
+
+environment "production"
+
+pidfile "#{shared_dir}/puma.pid"
+state_path "#{shared_dir}/puma.state"
+stdout_redirect "#{shared_dir}/puma.stdout.log", "#{shared_dir}/puma.stderr.log", true
+
+activate_control_app
+EOF
+
+# Create Systemd Service for Puma
+sudo tee /etc/systemd/system/puma.service > /dev/null <<EOF
+[Unit]
+Description=Puma HTTP Server for RubyMaintainerValidationApp
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/RubyMaintainerValidationApp
+ExecStart=/home/ubuntu/.rbenv/shims/puma -C /opt/RubyMaintainerValidationApp/puma.rb
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+## Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable puma
+sudo systemctl start puma
+sudo systemctl status puma
+
+# Configure Nginx
+
+Remove default config:
+sudo rm /etc/nginx/sites-enabled/default
+Create new config:
+
+sudo tee /etc/nginx/sites-available/pkgmaintainers.bioconductor.org > /dev/null <<EOF
+# Redirect all HTTP requests to HTTPS
+server {
+    listen 80;
+    server_name pkgmaintainers.bioconductor.org;
+    return 301 https://$host$request_uri;
+}
+
+# HTTPS server block to proxy to Puma
+server {
+    listen 443 ssl;
+    server_name pkgmaintainers.bioconductor.org;
+
+    ssl_certificate /etc/letsencrypt/live/pkgmaintainers.bioconductor.org/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/pkgmaintainers.bioconductor.org/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    location = /robots.txt {
+        root /opt/RubyMaintainerValidationApp/public;
+        access_log off;
+        log_not_found off;
+    }
+    if ($request_method ~ ^(TRACE|TRACK|DEBUG|OPTIONS|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK)$ ) {
+        return 444;
+    }
+    #    if ($http_user_agent ~* (curl|wget|python|scrapy|libwww|httpclient|java|nikto|dirbuster|webdav|bot|spider|crawler)) {
+    #    return 403;
+    #}	
+
+    location / {
+        proxy_pass http://unix:/tmp/ruby_maintainer_validation.sock:;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_redirect off;
+    }
+}
+EOF
+
+## Enable the site
+sudo ln -s /etc/nginx/sites-available/pkgmaintainers.bioconductor.org /etc/nginx/sites-enabled/
+
+## Test and restart Nginx
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Set Up https with certbot
+sudo certbot --nginx -d pkgmaintainers.bioconductor.org
+
+
+# Sinatra Production Config
+
+configure :production do
+  enable :protection
+  set :protection, except: :http_origin
+  set :protection, proxy: true
+end
+
+
+# Restart services
+sudo systemctl restart puma
+sudo systemctl restart nginx
+
+
+# Useful logs?
+/opt/RubyMaintainerValidationApp/shared/puma.stdout.log
+/var/log/nginx/access.log
+/var/log/nginx/error.log
