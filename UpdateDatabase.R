@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS maintainers (
     pw_hash TEXT,
     email_status TEXT,
     is_email_valid BOOLEAN,
+    last_verification_sent DATE,
     bounce_type TEXT,
     bounce_subtype TEXT,
     smtp_status TEXT,

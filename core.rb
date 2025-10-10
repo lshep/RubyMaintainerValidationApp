@@ -50,6 +50,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
         pw_hash VARCHAR(255),
         email_status VARCHAR(50),
         is_email_valid BOOLEAN,
+        last_verification_sent DATE,
         bounce_type VARCHAR(50),
         bounce_subtype VARCHAR(50),
         smtp_status VARCHAR(10),
@@ -96,11 +97,27 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
     email = obj['email']
     name = obj['name'] || "Maintainer"
 
+    row = CoreConfig.db.get_first_row(
+      "SELECT pw_hash, last_verification_sent FROM maintainers WHERE email = ?",
+      [email]
+    )
+    existing_hash = row && row[0]
+    last_sent_date = row && row[1]
+
+    resend_threshold_days = 14
+    
+    if last_sent_date
+      last_date = Date.parse(last_sent_date) rescue nil
+      if last_date && (Date.today - last_date) < resend_threshold_days
+        return "Verification email already sent recently (on #{last_date}). Skipping re-send."
+      end
+    end
+    
     password = SecureRandom.hex(20)
     hash = BCrypt::Password.create(password)
 
-    CoreConfig.db.execute("UPDATE maintainers SET pw_hash = ? WHERE email = ?",
-                          [hash, email])
+    CoreConfig.db.execute("UPDATE maintainers SET pw_hash = ?, last_verification_sent = ? WHERE email = ?",
+                          [hash, Date.today.to_s, email])
     
     ## puts "Would send email to #{email} (#{name}) with password: #{password}"
     return Core.email_validation_request(name, email, password)
@@ -345,12 +362,29 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   end
 
   
+  ## def Core.list_invalid()
+  ##  emails = CoreConfig.db.execute("SELECT DISTINCT email FROM maintainers WHERE is_email_valid IS NULL OR is_email_valid = 0")
+  ##  return emails.to_json
+  ## end
+
+  
   def Core.list_invalid()
-    emails = CoreConfig.db.execute("SELECT DISTINCT email FROM maintainers WHERE is_email_valid IS NULL OR is_email_valid = 0")
-    return emails.to_json
+    results_as_hash = CoreConfig.db.results_as_hash
+    begin
+      CoreConfig.db.results_as_hash = true
+      rows = CoreConfig.db.execute(<<-SQL)
+        SELECT DISTINCT email, name, package, email_status,
+                        bounce_type, bounce_subtype, smtp_status, diagnostic_code
+        FROM maintainers
+        WHERE is_email_valid IS NULL OR is_email_valid = 0
+      SQL
+      return rows.to_json
+    ensure
+      CoreConfig.db.results_as_hash = results_as_hash
+    end
   end
 
-
+  
   def Core.list_needs_consent()
     emails = CoreConfig.db.execute("SELECT DISTINCT email FROM maintainers WHERE consent_date IS NULL OR  DATE(consent_date) <= DATE('now', '-1 year')")
     return emails.to_json

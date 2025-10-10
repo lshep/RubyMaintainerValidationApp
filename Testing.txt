@@ -90,6 +90,8 @@ resp_status(response)
 resp_body_string(response)
 
 
+## Do it twice as the second time should not send because less than 14 days
+
 
 ## ------------------------------------------------------------------------------##
 ##
@@ -101,10 +103,8 @@ resp_body_string(response)
 ## database consent_date. Something like:
 library(httr2)
 
-endpoint_url <- "http://127.0.0.1:4567/acceptpolicies/lori.shepherd@roswellpark.org/accept/2bed68d404b1e0ab30e0394abb8868448173f616"
-response <- request(endpoint_url) %>%
-  req_perform()
-
+endpoint_url <- "http://127.0.0.1:4567/acceptpolicies/maintainer@bioconductor.org/accept/d0044f7622f8b804da6ee4a9e1382261d4cd6eb3"
+response <- request(endpoint_url) %>% req_perform()
 resp_status(response)
 resp_body_string(response)
 
