@@ -254,3 +254,9 @@ Core.send_email(
    "Complaint Test",
    "Testing complaint handling in BioconductorMaintainerValidation"
 )
+
+## Debug someone's email
+require_relative './core'
+Core.send_email("bioc-validation-noreply@bioconductor.org", "thomas.girke@ucr.edu", "Email Validation", "Test for email bounce")
+
+
