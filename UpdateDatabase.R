@@ -50,7 +50,7 @@ clean_name <- function(name) {
 extract_name_email <- function(maintainer_string) {
   pattern <- "([^,<]+?)\\s*<([^>]+)>"
   matches <- str_match_all(maintainer_string, pattern)[[1]]
-  if (nrow(matches) == 0) {
+  if ((nrow(matches) == 0) | all(is.na(matches))) {
     return(data.frame(Name=character(0), Email=character(0), stringsAsFactors=FALSE))
   }  
   df <- data.frame(
@@ -62,15 +62,29 @@ extract_name_email <- function(maintainer_string) {
 }
 
 for (i in seq_along(files)) {
+  if(debug){ message(files[i])}
+    
   temp <- read.dcf(url(files[i]))
 
   for (j in seq_len(nrow(temp))) {
+    if(debug){ message(temp[j,c("Package", "Maintainer")])}
     pkg_name <- temp[j, "Package"]
     maint_raw <- temp[j, "Maintainer"]
 
     name_email_df <- extract_name_email(maint_raw)
 
     if (nrow(name_email_df) > 0) {
+      name_email_df$Package <- pkg_name
+      emails_list[[length(emails_list) + 1]] <- name_email_df[, c("Package", "Name", "Email")]
+    }else{
+      name_email_df <- rbind(
+          name_email_df,
+          data.frame(
+              Name = "NoName",
+              Email = paste0(pkg_name, "Invalid@bioconductor.org"),
+              stringsAsFactors = FALSE
+          )
+      )
       name_email_df$Package <- pkg_name
       emails_list[[length(emails_list) + 1]] <- name_email_df[, c("Package", "Name", "Email")]
     }
