@@ -170,6 +170,12 @@ configure :production do
   set :protection, proxy: true
 end
 
+# export needed environment variable
+systemctl status puma
+edit file "Loaded"
+[Service]
+Environment="SEND_VERIFICATION_EMAILS=true"
+
 
 # Restart services
 sudo systemctl restart puma
