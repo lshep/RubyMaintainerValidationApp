@@ -495,7 +495,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       rows = CoreConfig.db.execute(<<-SQL)
         SELECT 
           package, name, email, consent_date, email_status,
-          is_email_valid, bounce_type, bounce_subtype, smtp_status, diagnostic_code
+          is_email_valid, last_verification_sent, bounce_type, bounce_subtype, smtp_status, diagnostic_code
         FROM maintainers
       SQL
       return rows
