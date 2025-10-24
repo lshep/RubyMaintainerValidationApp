@@ -184,5 +184,6 @@ sudo systemctl restart nginx
 
 # Useful logs?
 /opt/RubyMaintainerValidationApp/shared/puma.stdout.log
+/opt/RubyMaintainerValidationApp/shared/puma.stderr.log
 /var/log/nginx/access.log
 /var/log/nginx/error.log
