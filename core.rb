@@ -148,7 +148,8 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
 
       Accept Bioconductor Policies: #{CoreConfig.request_uri}/acceptpolicies/#{email}/accept/#{password}
  
-      Please don't reply to this email.
+      Please don't reply to this email. For questions or concerns please reach
+      out on the bioc-devel@r-project.org mailing list.
 
       Thank you,
 
