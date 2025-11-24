@@ -72,7 +72,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
                              end
                   
                   # Monthly rotation, keep 4 old logs
-                  log = Logger.new(log_path, 4, "monthly")
+                  log = Logger.new(log_path, "monthly", 4)
                   log.level = Logger::INFO
                   log.formatter = proc do |severity, datetime, _progname, msg|
                     "[#{datetime}] #{severity}: #{msg}\n"
