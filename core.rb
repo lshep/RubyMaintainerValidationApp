@@ -3,6 +3,7 @@ require 'sqlite3'
 require 'bcrypt'
 require 'securerandom'
 require 'aws-sdk-ses'
+require 'aws-sdk-sesv2'
 require 'date'
 
 class String
@@ -111,6 +112,21 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       if last_date && (Date.today - last_date) < resend_threshold_days
         return "Verification email already sent recently (on #{last_date}). Skipping re-send."
       end
+    end
+
+    ## check suppression list. If on suppression list before analysis delivery
+    ## failure is silent and cannot be tracked
+    sesv2 = Aws::SESV2::Client.new(region: ENV['AWS_REGION'] || 'us-east-1')
+    begin
+      resp = sesv2.get_suppressed_destination({email_address: email})
+      if resp && resp.suppressed_destination_attributes
+        sesv2.delete_suppressed_destination({email_address: email})
+         puts "Removed #{email} from SES suppression list."
+      end
+    rescue Aws::SESV2::Errors::NotFoundException
+    # Not on suppression list, nothing to do
+    rescue Aws::SESV2::Errors::ServiceError => e
+      puts "Error checking/removing #{email} from suppression list: #{e.message}"
     end
     
     password = SecureRandom.hex(20)
@@ -432,6 +448,10 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
         Core.handle_bounce(notification)
       when 'Complaint'
         Core.handle_complaint(notification)
+      when 'Reject'
+        Core.handle_reject(notification)
+      when 'RenderingFailure'
+        Core.handle_rendering_failure(notification)
       end
       return [200, "Processed"]
 
@@ -467,6 +487,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
     end
   end
 
+
   def Core.handle_complaint(notification)
     mail = notification['mail']
     complaint = notification['complaint']
@@ -489,6 +510,48 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   end
 
   
+  def Core.handle_reject(notification)
+    mail = notification['mail']
+    reject = notification['reject']
+    tags = mail['tags'] || {}
+
+    return unless tags['App'] && tags['App'].include?('BioconductorMaintainerValidation')
+
+    email = mail['destination'].first
+    reason = reject['reason'] || "Unknown rejection reason"
+
+    CoreConfig.db.execute(
+      "UPDATE maintainers
+       SET email_status = ?, is_email_valid = 0,
+           bounce_type = ?, bounce_subtype = NULL,
+           smtp_status = NULL, diagnostic_code = ?
+       WHERE email = ?",
+      ["rejected", "reject", reason, email]
+    )
+  end
+
+
+  def Core.handle_rendering_failure(notification)
+    mail = notification['mail']
+    failure = notification['renderingFailure']
+    tags = mail['tags'] || {}
+
+    return unless tags['App']&.include?('BioconductorMaintainerValidation')
+
+    email = mail['destination'].first
+    error_message = failure['errorMessage']
+
+    CoreConfig.db.execute(
+      "UPDATE maintainers
+         SET email_status = ?, is_email_valid = 0,
+           bounce_type = ?, bounce_subtype = NULL,
+           smtp_status = NULL, diagnostic_code = ?
+       WHERE email = ?",
+      ['rendering_failure', 'rendering_failure', error_message, email]
+    )
+  end
+
+
   def Core.get_filtered_db_dump
     results_as_hash = CoreConfig.db.results_as_hash
     begin
