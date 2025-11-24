@@ -81,6 +81,7 @@ library(jsonlite)
 library(dplyr)
 json_payload <- toJSON(jsonlite::read_json("mock_verification.json"), pretty = TRUE, auto_unbox = TRUE)
 url_base = "http://127.0.0.1:4567"
+# url_base = "https://pkgmaintainers.bioconductor.org"
 email_url <- paste0(url_base, "/send-verification")
 response <- request(email_url) %>%
       req_headers("Content-Type" = "application/json") %>%
