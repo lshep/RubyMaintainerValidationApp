@@ -2,3 +2,11 @@
 ## pkgmaintainers.bioconductor.org / 44.218.162.37
 
 See also DashboardInterface for shiny App
+
+
+## If an email is on AWS suppression will silently fail and not try to resend
+   the verification email.
+   I tried to check suppression list and remove before sending but this does not
+   work.
+   Instead, check suppression list and add invalid information to database from
+   suppression list directly. 
