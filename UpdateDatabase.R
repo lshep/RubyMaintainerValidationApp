@@ -171,6 +171,9 @@ if(nrow(new_rows) > 0){
     
     dbWriteTable(con, "maintainers", to_insert, append = TRUE, row.names = FALSE)
     message("Inserted ", nrow(to_insert), " new rows.")
+    for (pkg in new_rows$Package) {
+        message("  - ", pkg)  # two spaces for indentation
+    }
 } else {
     message("No new rows to insert.")
 }
@@ -198,6 +201,9 @@ if (nrow(deleted_pairs) > 0) {
     }
     
     message("Deleted ", nrow(deleted_pairs), " obsolete rows.")
+    for (r in 1:nrow(deleted_pairs)) {
+        message("  - ", deleted_pairs[r,"package"], " - ", deleted_pairs[r,"email"])  # two spaces for indentation
+    }
 } else {
     message("No rows to delete.")
 }
@@ -226,6 +232,12 @@ WHERE consent_date IS NULL
     
     # Save to JSON
     if (nrow(stale_unique) > 0) {
+        em_uni <-  unique(stale_unique[,"email"])
+        message("Found ", length(em_uni)," emails needing verification:")
+        for (em in em_uni) {
+            message("  - ", em)  
+        }
+
         json_payload <- toJSON(stale_unique, pretty = TRUE, auto_unbox = TRUE, na = "null")
         email_url <- paste0(url_base, "/send-verification")
         response <- request(email_url) %>%
