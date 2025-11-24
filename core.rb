@@ -5,6 +5,7 @@ require 'securerandom'
 require 'aws-sdk-ses'
 require 'aws-sdk-sesv2'
 require 'date'
+require 'logger'
 
 class String
   # Strip leading whitespace from each line that is the same as the
@@ -62,6 +63,25 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   end
 
   
+  def Core.logger
+    @logger ||= begin
+                  log_path = if Dir.exist?("/opt/RubyMaintainerValidationApp/shared")
+                               "/opt/RubyMaintainerValidationApp/shared/ses_debug.log"
+                             else
+                               "./ses_debug.log"  # fallback to current directory
+                             end
+                  
+                  # Monthly rotation, keep 4 old logs
+                  log = Logger.new(log_path, 4, "monthly")
+                  log.level = Logger::INFO
+                  log.formatter = proc do |severity, datetime, _progname, msg|
+                    "[#{datetime}] #{severity}: #{msg}\n"
+                  end
+                  log
+                end
+  end
+
+    
   def Core.process_verification_payload(payload, base_url)
     if CoreConfig.request_uri.nil?
       CoreConfig.set_request_uri(base_url)
@@ -97,6 +117,8 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   def Core.handle_verify_email(obj)
     email = obj['email']
     name = obj['name'] || "Maintainer"
+    
+    Core.logger.info "Processing verification for #{email}"
 
     row = CoreConfig.db.get_first_row(
       "SELECT pw_hash, last_verification_sent FROM maintainers WHERE email = ?",
@@ -110,6 +132,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
     if last_sent_date
       last_date = Date.parse(last_sent_date) rescue nil
       if last_date && (Date.today - last_date) < resend_threshold_days
+        Core.logger.info "Verification email already sent recently (on #{last_date}) for #{email}. Skipping re-send."
         return "Verification email already sent recently (on #{last_date}). Skipping re-send."
       end
     end
@@ -119,14 +142,18 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
     sesv2 = Aws::SESV2::Client.new(region: ENV['AWS_REGION'] || 'us-east-1')
     begin
       resp = sesv2.get_suppressed_destination({email_address: email})
-      if resp && resp.suppressed_destination_attributes
+      if resp && resp.suppressed_destination
+        sup = resp.suppressed_destination
+        Core.logger.info "Email #{email} is on SES suppression list:"
+        Core.logger.info "  Reason: #{sup.reason}"
         sesv2.delete_suppressed_destination({email_address: email})
-         puts "Removed #{email} from SES suppression list."
-      end
+        sleep 2
+        Core.logger.info "Removed #{email} from SES suppression list."
+      end                
     rescue Aws::SESV2::Errors::NotFoundException
-    # Not on suppression list, nothing to do
+      Core.logger.info "#{email} not on SES suppression list."
     rescue Aws::SESV2::Errors::ServiceError => e
-      puts "Error checking/removing #{email} from suppression list: #{e.message}"
+      Core.logger.error "Error checking/removing #{email} from suppression list: #{e.message}"
     end
     
     password = SecureRandom.hex(20)
@@ -177,6 +204,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       msg)
   end
 
+  
   def Core.get_ses_client
     region = ENV['AWS_REGION'] || 'us-east-1'
 
@@ -194,43 +222,51 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       Aws::SES::Client.new(region: region)
     end
   end
+
   
   def Core.send_email(from, to, subject, message)
 
     if ENV['SEND_VERIFICATION_EMAILS'] == 'true'
 
       ses = Core.get_ses_client
-      
-      ses.send_email({
-                       source: from, 
-                       destination: { to_addresses: [to] },
-                       message: {
-                         subject: {
-                           data: subject,
-                           charset: "UTF-8",
-                         },
-                         body: { 
-                           text: {
-                             data: message,
+
+      begin
+        ses.send_email({
+                         source: from, 
+                         destination: { to_addresses: [to] },
+                         message: {
+                           subject: {
+                             data: subject,
                              charset: "UTF-8",
-                           }
+                           },
+                           body: { 
+                             text: {
+                               data: message,
+                               charset: "UTF-8",
+                             }
+                           },
                          },
-                       },
-                       configuration_set_name: "BioconductorMaintainerValidationConfig",
-                       tags: [
-                         { name: "App", value: "BioconductorMaintainerValidation" }
-                       ]
-                     })
+                         configuration_set_name: "BioconductorMaintainerValidationConfig",
+                         tags: [
+                           { name: "App", value: "BioconductorMaintainerValidation" }
+                         ]
+                       })
+        Core.logger.info "Email successfully sent to #{to}"
+      rescue Aws::SES::Errors::ServiceError => e
+        Core.logger.error "Failed to send email to #{to}: #{e.message}"
+      end
+        
     else
 
-      puts "=== Mock send_email called === "
-      puts "From: #{from}"
-      puts "To: #{to}"
-      puts "Subject: #{subject}"
-      puts "Message: \n #{message}"
-      puts "==============================="
+      Core.logger.info "=== Mock send_email called === "
+      Core.logger.info "From: #{from}"
+      Core.logger.info "To: #{to}"
+      Core.logger.info "Subject: #{subject}"
+      Core.logger.info "Message: \n #{message}"
+      Core.logger.info "==============================="
     end
   end
+
   
   def Core.get_entries_by_email(email)
     results_as_hash = CoreConfig.db.results_as_hash
