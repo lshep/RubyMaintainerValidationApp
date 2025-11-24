@@ -80,6 +80,11 @@ get '/list/bademails/' do
   return Core.list_bad_emails()
 end
 
+get '/list/suppressionList/' do
+  content_type :json
+  return Core.check_emails_against_suppression_list()
+end
+
 get '/download-maintainer-db' do
   content_type 'application/json'
   data = Core.get_filtered_db_dump

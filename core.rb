@@ -136,25 +136,6 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
         return "Verification email already sent recently (on #{last_date}). Skipping re-send."
       end
     end
-
-    ## check suppression list. If on suppression list before analysis delivery
-    ## failure is silent and cannot be tracked
-    sesv2 = Aws::SESV2::Client.new(region: ENV['AWS_REGION'] || 'us-east-1')
-    begin
-      resp = sesv2.get_suppressed_destination({email_address: email})
-      if resp && resp.suppressed_destination
-        sup = resp.suppressed_destination
-        Core.logger.info "Email #{email} is on SES suppression list:"
-        Core.logger.info "  Reason: #{sup.reason}"
-        sesv2.delete_suppressed_destination({email_address: email})
-        sleep 2
-        Core.logger.info "Removed #{email} from SES suppression list."
-      end                
-    rescue Aws::SESV2::Errors::NotFoundException
-      Core.logger.info "#{email} not on SES suppression list."
-    rescue Aws::SESV2::Errors::ServiceError => e
-      Core.logger.error "Error checking/removing #{email} from suppression list: #{e.message}"
-    end
     
     password = SecureRandom.hex(20)
     hash = BCrypt::Password.create(password)
@@ -224,6 +205,25 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   end
 
   
+  def Core.get_ses_client_v2
+    region = ENV['AWS_REGION'] || 'us-east-1'
+
+    if ENV['AWS_ACCESS_KEY_ID'] && ENV['AWS_SECRET_ACCESS_KEY']
+      creds = Aws::Credentials.new(
+        ENV['AWS_ACCESS_KEY_ID'],
+        ENV['AWS_SECRET_ACCESS_KEY']
+      )
+
+      Aws::SESV2::Client.new(
+        region: region,
+        credentials: creds
+      )
+    else
+      Aws::SESV2::Client.new(region: region)
+    end
+  end
+
+
   def Core.send_email(from, to, subject, message)
 
     if ENV['SEND_VERIFICATION_EMAILS'] == 'true'
@@ -425,12 +425,11 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
     results_as_hash = CoreConfig.db.results_as_hash
     begin
       CoreConfig.db.results_as_hash = true
-      rows = CoreConfig.db.execute(<<-SQL)
+      rows = CoreConfig.db.execute("
         SELECT DISTINCT email, name, package, email_status,
                         bounce_type, bounce_subtype, smtp_status, diagnostic_code
         FROM maintainers
-        WHERE is_email_valid IS NULL OR is_email_valid = 0
-      SQL
+        WHERE is_email_valid IS NULL OR is_email_valid = 0")
       return rows.to_json
     ensure
       CoreConfig.db.results_as_hash = results_as_hash
@@ -605,4 +604,56 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
   end
 
 
+  def Core.check_emails_against_suppression_list()
+    
+    sesv2 = Core.get_ses_client_v2
+
+    rows = CoreConfig.db.execute(
+      "SELECT DISTINCT email 
+       FROM maintainers
+       WHERE (is_email_valid = 1 OR is_email_valid IS NULL)
+       AND (consent_date IS NULL OR DATE(consent_date) <= DATE('now', '-1 year'))")
+
+    results = []
+
+    rows.each do |row|
+      email = row[0]
+      Core.logger.info "Checking suppression list for #{email}"
+
+      begin
+        resp = sesv2.get_suppressed_destination(email_address: email)
+
+        if resp && resp.suppressed_destination
+          sup = resp.suppressed_destination
+
+          Core.logger.info "Email #{email} IS on SES suppression list. Reason: #{sup.reason}"
+
+          # Update DB and invalidate
+          CoreConfig.db.execute(
+            "UPDATE maintainers
+             SET email_status = ?,
+                 is_email_valid = 0,
+                 bounce_type = ?,
+                 bounce_subtype = NULL,
+                 smtp_status = NULL,
+                 diagnostic_code = ?
+             WHERE email = ?",
+            ["suppresed",sup.reason, sup.last_update_time.to_s, email]
+          )
+
+          results << { email: email, suppressed: true, reason: sup.reason }
+        end
+      rescue Aws::SESV2::Errors::NotFoundException
+        #Core.logger.info "#{email} not on suppression list"
+        #results << { email: email, suppressed: false }
+      rescue Aws::SESV2::Errors::ServiceError => e
+        Core.logger.error "Error checking #{email}: #{e.message}"
+        results << { email: email, error: e.message }
+      end
+    end
+
+    results.to_json
+  end
+
+  
 end
