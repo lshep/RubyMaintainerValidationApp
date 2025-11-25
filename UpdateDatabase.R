@@ -260,6 +260,39 @@ WHERE consent_date IS NULL
 ## write sample json for ruby debugging
 ## write(json_payload, file = "mock_verification.json")
 
+
+## ------------------------------------------------------------------------------##
+##
+##  Trigger AWS Suppression List Check
+##
+## ------------------------------------------------------------------------------##
+
+if(sendEmail){
+     message("attempting to verify emails on aws suppression list")
+
+     suppression_url <- paste0(url_base, "/check/suppressionList")
+     response <- request(suppression_url) %>% req_method("POST") %>% req_perform()
+     if (resp_status(response) == 200){
+         json <- response %>% resp_body_json()
+         if(length(json) = 0){
+             message("  No new suppression list emails")
+         }else{
+             emails <- sapply(json, function(x) x$email)
+             message("  Emails Found on AWS Suppression List:\n")
+             for (em in emails) {
+                 message("  - ", em)
+             }
+         }
+     }else{
+         message("AWS Suppression Check failure")
+     }
+
+}else{
+    message("Not attempting to verify emails on aws suppression list")
+}
+
+
+
 ## ------------------------------------------------------------------------------##
 ##
 ##  Update Entry for Name Change
