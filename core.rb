@@ -638,7 +638,7 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
                  smtp_status = NULL,
                  diagnostic_code = ?
              WHERE email = ?",
-            ["suppresed",sup.reason, sup.last_update_time.to_s, email]
+            ["suppressed",sup.reason, sup.last_update_time.to_s, email]
           )
 
           results << { email: email, suppressed: true, reason: sup.reason }
@@ -655,5 +655,21 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
     results.to_json
   end
 
+  
+  def Core.list_suppression_list()
+    results_as_hash = CoreConfig.db.results_as_hash
+    begin
+      CoreConfig.db.results_as_hash = true
+      info = CoreConfig.db.execute("SELECT DISTINCT email, name FROM maintainers WHERE email_status = 'suppressed'")
+      if info.empty?
+        return {awssuppression: false}.to_json
+      else
+        return {awssuppression: true, data: info}.to_json
+      end
+    ensure
+      CoreConfig.db.results_as_hash = results_as_hash
+    end      
+  end
+  
   
 end

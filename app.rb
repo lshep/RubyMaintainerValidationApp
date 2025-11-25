@@ -37,6 +37,11 @@ post '/sns/notifications' do
   message
 end
 
+post '/check/suppressionList' do
+  content_type :json
+  return Core.check_emails_against_suppression_list()
+end
+
 get '/' do
   send_file File.join(settings.public_folder, 'description.html')
 end
@@ -65,24 +70,24 @@ get '/info/valid/:email' do
   return Core.is_email_valid(params[:email])
 end
 
-get '/list/invalid/' do
+get '/list/invalid/?' do
   content_type :json
   return Core.list_invalid()
 end
 
-get '/list/needs-consent/' do
+get '/list/needs-consent/?' do
   content_type :json
   return Core.list_needs_consent()
 end
 
-get '/list/bademails/' do
+get '/list/bademails/?' do
   content_type :json
   return Core.list_bad_emails()
 end
 
-get '/list/suppressionList/' do
+get '/list/suppressionList/?' do
   content_type :json
-  return Core.check_emails_against_suppression_list()
+  return Core.list_suppression_list()
 end
 
 get '/download-maintainer-db' do

@@ -162,12 +162,37 @@ response <- request(endpoint_url) %>% req_perform()
 resp_status(response)
 resp_body_string(response)
 
+endpoint_url = "http://127.0.0.1:4567/list/invalid"
+response <- request(endpoint_url) %>% req_perform()
+resp_status(response)
+resp_body_string(response)
+
 endpoint_url = "http://127.0.0.1:4567/list/needs-consent/"
 response <- request(endpoint_url) %>% req_perform()
 resp_status(response)
 resp_body_string(response)
 
+endpoint_url = "http://127.0.0.1:4567/list/needs-consent"
+response <- request(endpoint_url) %>% req_perform()
+resp_status(response)
+resp_body_string(response)
+
 endpoint_url = "http://127.0.0.1:4567/list/bademails/"
+response <- request(endpoint_url) %>% req_perform()
+resp_status(response)
+resp_body_string(response)
+
+endpoint_url = "http://127.0.0.1:4567/list/bademails"
+response <- request(endpoint_url) %>% req_perform()
+resp_status(response)
+resp_body_string(response)
+
+endpoint_url = "http://127.0.0.1:4567/list/suppressionList/"
+response <- request(endpoint_url) %>% req_perform()
+resp_status(response)
+resp_body_string(response)
+
+endpoint_url = "http://127.0.0.1:4567/list/suppressionList"
 response <- request(endpoint_url) %>% req_perform()
 resp_status(response)
 resp_body_string(response)
@@ -206,6 +231,19 @@ endpoint_url = "http://127.0.0.1:4567/info/valid/carol@example.com"
 response <- request(endpoint_url) %>% req_perform()
 resp_status(response)
 resp_body_string(response)
+
+
+##----------------------------------------------------##
+##
+##  Testing suppressionList check
+##
+##----------------------------------------------------##
+
+endpoint <- "http://127.0.0.1:4567/check/suppressionList"
+
+response <- request(endpoint) %>% req_method("POST") %>% req_perform()
+json <- response %>% resp_body_json()
+
 
 ## ------------------------------------------------------------------------------##
 ##
