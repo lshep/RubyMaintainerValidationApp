@@ -170,7 +170,8 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
         3. Deprecation Practices: https://contributions.bioconductor.org/package-end-of-life-policy.html
             
 
-      Accept Bioconductor Policies: #{CoreConfig.request_uri}/acceptpolicies/#{email}/accept/#{password}
+      To accept the above Bioconductor policies, please click on the following
+      link, which will register your approval: #{CoreConfig.request_uri}/acceptpolicies/#{email}/accept/#{password}
  
       Please don't reply to this email. For questions or concerns please reach
       out on the bioc-devel@r-project.org mailing list.
