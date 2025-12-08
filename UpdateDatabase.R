@@ -274,7 +274,7 @@ if(sendEmail){
      response <- request(suppression_url) %>% req_method("POST") %>% req_perform()
      if (resp_status(response) == 200){
          json <- response %>% resp_body_json()
-         if(length(json) = 0){
+         if(length(json) == 0){
              message("  No new suppression list emails")
          }else{
              emails <- sapply(json, function(x) x$email)
