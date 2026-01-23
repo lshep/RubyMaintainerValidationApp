@@ -404,12 +404,16 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       CoreConfig.db.results_as_hash = true
       info = CoreConfig.db.execute("SELECT DISTINCT email, name, package,
   consent_date, email_status, is_email_valid, bounce_type, bounce_subtype,
-  smtp_status, diagnostic_code FROM maintainers WHERE email = ? AND (is_email_valid IS NULL OR is_email_valid = 0)", email)
-      if info.empty?
-        return {valid: true}.to_json
-      else
-        return {valid: false, data: info}.to_json
-      end
+  smtp_status, diagnostic_code FROM maintainers WHERE email = ?", email)
+
+    return { valid: false }.to_json if info.empty?
+
+    if info.all? { |row| row["is_email_valid"] == 1 }
+      return { valid: true }.to_json
+    end
+
+    { valid: false, data: info }.to_json
+     
     ensure
       CoreConfig.db.results_as_hash = results_as_hash
     end
