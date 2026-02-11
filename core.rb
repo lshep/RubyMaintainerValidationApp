@@ -176,6 +176,10 @@ dbfile = File.join(File.dirname(__FILE__), "db.sqlite3")
       Please don't reply to this email. For questions or concerns please reach
       out on the bioc-devel@r-project.org mailing list.
 
+      If you are unsure of what package you are listed as a current Bioconductor
+      maintainer, Please see the BiocMaintainerApp to easily query the database
+      of maintainers: https://bioconductor.org/packages/BiocMaintainerApp/
+
       Thank you,
 
       The Bioconductor Core Team.
